@@ -200,8 +200,8 @@ trans_classifier <- R6::R6Class(classname = "trans_classifier",
 		#' 
 		#' @param method default "rf"; representing the random forest method; see method in train function of caret package.
 		#' @param metric default "Accuracy"; see metric in train function of caret package.
-		#' @param max.mtry default 2; maximum mtry.
-		#' @param max.ntree default 200; Number of trees to grow; pass to the ntree parameter of randomForest function in randomForest package.
+		#' @param max.mtry default 4; maximum mtry.
+		#' @param vec.ntree default seq(100,400,50); Number of trees to grow; pass to the ntree parameter of randomForest function in randomForest package.
 		#' @param ... parameters pass to train function of caret package.
 		#' @return res_train in the object.
 		#' @examples
@@ -211,8 +211,9 @@ trans_classifier <- R6::R6Class(classname = "trans_classifier",
 		cal_train = function(
 			method = "rf",
 			metric = "Accuracy",
-			max.mtry = 2,
-			max.ntree = 200,
+			max.mtry = 4,
+			#max.ntree = 200,
+			vec.ntree = seq(100,400,50),
 			...
 			){
 			train_data <- self$data_train
@@ -225,10 +226,10 @@ trans_classifier <- R6::R6Class(classname = "trans_classifier",
 			  set.seed(12345)
 				message("Optimization of Random Forest parameters ...")
 
-				tunegrid <- expand.grid(.mtry=seq(from =1, to = max.mtry) )
+				tunegrid <- expand.grid(.mtry=seq(from =1, to = 4) )
 				modellist<- list()
 				#
-				for (ntree in c(100, max.ntree)) {
+				for (ntree in c(vec.ntree)) {
 					fit <- caret::train(Class~., data=train_data, method = method, metric=metric, 
 									  tuneGrid=tunegrid, trControl=control, ntree=ntree, ...)
 					key <- toString(ntree)
@@ -241,8 +242,9 @@ trans_classifier <- R6::R6Class(classname = "trans_classifier",
 				#summary(results)
 
 				ntree = as.numeric(rownames(res.tune1)[which(res.tune1$Mean == max(res.tune1$Mean))])[1]
-				#tunegrid <- expand.grid(.mtry=seq(from = 1, to=4, by = 0.5))
+				tunegrid <- expand.grid(.mtry=seq(from = 1, to = max.mtry, by = 1))
 				modellist <- list()
+				set.seed(12345)
 
 				fit <- caret::train(Class~., data=train_data, method = method, 
 					metric=metric, tuneGrid=tunegrid, 
@@ -408,7 +410,7 @@ trans_classifier <- R6::R6Class(classname = "trans_classifier",
 				all_auc_perf[[i]] <- auc.perf
 				#print(auc.perf@y.values)
 				message('AUC of ', i, " = ", auc.perf@y.values)
-				gg_df <- data.frame(x = attributes(perf)$x.values[[1]], y = attributes(perf)$y.values[[1]], Group = paste0(i, " ", "AUC = ", auc.perf@y.values))
+				gg_df <- data.frame(x = attributes(perf)$x.values[[1]], y = attributes(perf)$y.values[[1]], Group = paste0(i, " ", "AUC = ", round(as.numeric(auc.perf@y.values), digits = 2)))
 				all_perf_table <- rbind(all_perf_table, gg_df)
 			}
 			res_ROC$res_perf <- all_perf
